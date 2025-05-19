@@ -21,7 +21,7 @@ $bestSellers = $conn->query("
 ")->fetchAll();
 
 // Fetch banners for hero carousel
-//$banners = $conn->query("SELECT * FROM banners WHERE is_active = 1 ORDER BY sort_order ASC")->fetchAll();
+$banners = $conn->query("SELECT * FROM banners WHERE is_active = 1 ORDER BY sort_order ASC")->fetchAll();
 
 // Category filter
 $selectedCategory = isset($_GET['category']) ? $_GET['category'] : null;

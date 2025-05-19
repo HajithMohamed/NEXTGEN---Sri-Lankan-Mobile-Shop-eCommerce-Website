@@ -132,8 +132,19 @@ if (!empty($product['images'])) {
                     </form>
                     
                     <div class="d-flex gap-2">
-                        <button onclick="toggleWishlist(<?php echo $productId; ?>)" class="btn btn-outline-primary">
-                            <i class="fas fa-heart me-2"></i>Add to Wishlist
+                        <?php
+                        $isInWishlist = false;
+                        if (isLoggedIn()) {
+                            $conn = getDBConnection();
+                            $stmt = $conn->prepare("SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?");
+                            $stmt->execute([$_SESSION['user_id'], $productId]);
+                            $isInWishlist = $stmt->fetch() !== false;
+                        }
+                        ?>
+                        <button onclick="toggleWishlist(<?php echo $productId; ?>)" 
+                                class="btn btn-outline-primary<?php echo $isInWishlist ? ' active' : ''; ?>"
+                                data-product-id="<?php echo $productId; ?>">
+                            <i class="fas fa-heart me-2"></i><?php echo $isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'; ?>
                         </button>
                         <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#shareModal">
                             <i class="fas fa-share-alt me-2"></i>Share

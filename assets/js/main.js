@@ -75,10 +75,22 @@ function toggleWishlist(productId) {
             const wishlistBtn = document.querySelector(`[data-product-id="${productId}"]`);
             if (wishlistBtn) {
                 wishlistBtn.classList.toggle('active');
+                const icon = wishlistBtn.querySelector('i');
+                const text = wishlistBtn.textContent.trim();
+                
+                if (wishlistBtn.classList.contains('active')) {
+                    wishlistBtn.innerHTML = `<i class="fas fa-heart me-2"></i>Remove from Wishlist`;
+                } else {
+                    wishlistBtn.innerHTML = `<i class="fas fa-heart me-2"></i>Add to Wishlist`;
+                }
             }
             showAlert(data.message, 'success');
         } else {
-            showAlert('Error updating wishlist', 'danger');
+            if (data.message === 'Please login to add items to wishlist') {
+                window.location.href = 'login.php';
+            } else {
+                showAlert(data.message, 'danger');
+            }
         }
     })
     .catch(error => {
@@ -162,9 +174,28 @@ $(document).ready(function() {
     var $filterForm = $('#filterForm');
     var $productGrid = $('#productGrid');
     if ($filterForm.length && $productGrid.length) {
+        // Handle category checkboxes
+        $('#category_all').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('input[name="category[]"]').not(this).prop('checked', false);
+            }
+        });
+
+        $('input[name="category[]"]').not('#category_all').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#category_all').prop('checked', false);
+            }
+            // If no categories are selected, check "All"
+            if ($('input[name="category[]"]:checked').length === 0) {
+                $('#category_all').prop('checked', true);
+            }
+        });
+
+        // Handle form submission
         $filterForm.on('change', 'input, select', function() {
             $filterForm.submit();
         });
+
         $filterForm.on('submit', function(e) {
             e.preventDefault();
             var formData = $filterForm.serialize();

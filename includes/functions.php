@@ -99,7 +99,10 @@ function getCartTotal() {
 // Product functions
 function getProduct($productId) {
     $conn = getDBConnection();
-    $stmt = $conn->prepare("SELECT * FROM products WHERE id = ?");
+    $stmt = $conn->prepare("SELECT p.*, c.name as category_name 
+                            FROM products p 
+                            LEFT JOIN categories c ON p.category_id = c.id 
+                            WHERE p.id = ?");
     $stmt->execute([$productId]);
     return $stmt->fetch();
 }

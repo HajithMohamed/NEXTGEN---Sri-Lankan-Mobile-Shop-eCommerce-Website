@@ -3,6 +3,15 @@ session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
 
+// Check if user is logged in for cart operations
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isLoggedIn()) {
+        $_SESSION['redirect_after_login'] = 'cart.php';
+        header('Location: login.php');
+        exit();
+    }
+}
+
 // Handle add to cart from other pages
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_cart'])) {
     $productId = (int)$_POST['product_id'];
@@ -77,16 +86,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         <?php if (empty($cartItems)): ?>
             <div class="alert alert-info">
-                Your cart is empty. <a href="products.php">Continue shopping</a>
+                <i class="fas fa-shopping-cart me-2"></i>Your cart is empty.
+                <a href="products.php" class="alert-link ms-2">Continue Shopping</a>
             </div>
         <?php else: ?>
             <div class="row">
                 <!-- Cart Items -->
                 <div class="col-md-8">
-                    <div class="card shadow-sm">
+                    <div class="card">
                         <div class="card-body">
                             <?php foreach ($cartItems as $item): ?>
-                                <div class="cart-item">
+                                <div class="cart-item mb-4">
                                     <div class="row align-items-center">
                                         <div class="col-md-2">
                                             <img src="<?php echo htmlspecialchars($item['image']); ?>" 
@@ -99,27 +109,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                     <?php echo htmlspecialchars($item['name']); ?>
                                                 </a>
                                             </h5>
-                                            <p class="text-muted mb-0"><?php echo htmlspecialchars($item['brand']); ?></p>
+                                            <p class="text-muted mb-0"><?php echo formatPrice($item['price']); ?> each</p>
                                         </div>
-                                        <div class="col-md-2">
-                                            <p class="mb-0"><?php echo formatPrice($item['price']); ?></p>
-                                        </div>
-                                        <div class="col-md-2">
+                                        <div class="col-md-3">
                                             <form method="POST" action="cart.php" class="d-flex align-items-center">
                                                 <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
-                                                <div class="input-group input-group-sm">
-                                                    <button type="button" class="btn btn-outline-secondary" 
-                                                            onclick="decrementQuantity(this)">-</button>
-                                                    <input type="number" class="form-control text-center" 
+                                                <div class="input-group">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" 
+                                                            onclick="updateQuantity(<?php echo $item['id']; ?>, <?php echo $item['quantity'] - 1; ?>)">-</button>
+                                                    <input type="number" class="form-control form-control-sm text-center" 
                                                            name="quantity" value="<?php echo $item['quantity']; ?>" 
-                                                           min="1" max="<?php echo $item['stock']; ?>">
-                                                    <button type="button" class="btn btn-outline-secondary" 
-                                                            onclick="incrementQuantity(this)">+</button>
+                                                           min="1" max="<?php echo $item['stock']; ?>"
+                                                           onchange="updateQuantity(<?php echo $item['id']; ?>, this.value)">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" 
+                                                            onclick="updateQuantity(<?php echo $item['id']; ?>, <?php echo $item['quantity'] + 1; ?>)">+</button>
                                                 </div>
-                                                <button type="submit" name="update_quantity" 
-                                                        class="btn btn-link text-primary ms-2">
-                                                    <i class="fas fa-sync-alt"></i>
-                                                </button>
+                                                <input type="hidden" name="update_quantity" value="1">
                                             </form>
                                         </div>
                                         <div class="col-md-2 text-end">
@@ -140,34 +145,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 <!-- Order Summary -->
                 <div class="col-md-4">
-                    <div class="card shadow-sm">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Order Summary</h5>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title mb-4">Order Summary</h5>
-                            
-                            <div class="d-flex justify-content-between mb-2">
+                            <div class="d-flex justify-content-between mb-3">
                                 <span>Subtotal</span>
-                                <span><?php echo formatPrice($total); ?></span>
+                                <span class="fw-bold"><?php echo formatPrice($total); ?></span>
                             </div>
-                            
-                            <div class="d-flex justify-content-between mb-2">
+                            <div class="d-flex justify-content-between mb-3">
                                 <span>Shipping</span>
                                 <span>Free</span>
                             </div>
-                            
                             <hr>
-                            
-                            <div class="d-flex justify-content-between mb-4">
-                                <span class="fw-bold">Total</span>
-                                <span class="fw-bold"><?php echo formatPrice($total); ?></span>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="h5 mb-0">Total</span>
+                                <span class="h5 mb-0"><?php echo formatPrice($total); ?></span>
                             </div>
                             
-                            <a href="checkout.php" class="btn btn-primary w-100">Proceed to Checkout</a>
-                            
-                            <div class="text-center mt-3">
-                                <a href="products.php" class="text-decoration-none">
-                                    <i class="fas fa-arrow-left me-2"></i>Continue Shopping
+                            <?php if (isLoggedIn()): ?>
+                                <a href="checkout.php" class="btn btn-primary w-100">
+                                    <i class="fas fa-lock me-2"></i>Proceed to Checkout
                                 </a>
-                            </div>
+                            <?php else: ?>
+                                <a href="login.php" class="btn btn-primary w-100">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Login to Checkout
+                                </a>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -186,21 +191,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="assets/js/main.js"></script>
     
     <script>
-        function incrementQuantity(button) {
-            const input = button.parentElement.querySelector('input');
-            const max = parseInt(input.getAttribute('max'));
-            const value = parseInt(input.value);
-            if (value < max) {
-                input.value = value + 1;
-            }
-        }
-        
-        function decrementQuantity(button) {
-            const input = button.parentElement.querySelector('input');
-            const value = parseInt(input.value);
-            if (value > 1) {
-                input.value = value - 1;
-            }
+        function updateQuantity(productId, quantity) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'cart.php';
+            
+            const productIdInput = document.createElement('input');
+            productIdInput.type = 'hidden';
+            productIdInput.name = 'product_id';
+            productIdInput.value = productId;
+            
+            const quantityInput = document.createElement('input');
+            quantityInput.type = 'hidden';
+            quantityInput.name = 'quantity';
+            quantityInput.value = quantity;
+            
+            const updateInput = document.createElement('input');
+            updateInput.type = 'hidden';
+            updateInput.name = 'update_quantity';
+            updateInput.value = '1';
+            
+            form.appendChild(productIdInput);
+            form.appendChild(quantityInput);
+            form.appendChild(updateInput);
+            
+            document.body.appendChild(form);
+            form.submit();
         }
     </script>
 </body>

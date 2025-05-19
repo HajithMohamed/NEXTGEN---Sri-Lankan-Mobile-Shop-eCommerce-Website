@@ -1,13 +1,22 @@
+
 <?php
 session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/search.php';
+
+// Get database connection
+$conn = getDBConnection();
 
 // Get filters
-$categoriesSelected = isset($_GET['category']) ? (array)$_GET['category'] : [];
-$search = isset($_GET['search']) ? sanitizeInput($_GET['search']) : null;
-$minPrice = isset($_GET['min_price']) ? (float)$_GET['min_price'] : null;
-$maxPrice = isset($_GET['max_price']) ? (float)$_GET['max_price'] : null;
+$categoriesSelected = [];
+if (isset($_GET['category'])) {
+    $categoriesSelected = is_array($_GET['category']) ? $_GET['category'] : [$_GET['category']];
+}
+$search = isset($_GET['search']) ? sanitizeInput($_GET['search']) : '';
+$minPrice = isset($_GET['min_price']) && $_GET['min_price'] !== '' ? (float)$_GET['min_price'] : null;
+$maxPrice = isset($_GET['max_price']) && $_GET['max_price'] !== '' ? (float)$_GET['max_price'] : null;
+$brandSelected = isset($_GET['brand']) ? sanitizeInput($_GET['brand']) : null;
 $sort = isset($_GET['sort']) ? sanitizeInput($_GET['sort']) : 'newest';
 
 // Pagination
@@ -15,117 +24,68 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 12;
 $offset = ($page - 1) * $perPage;
 
-// Get products
-$conn = getDBConnection();
-$sql = "SELECT p.*, c.name as category_name 
-        FROM products p 
-        LEFT JOIN categories c ON p.category_id = c.id 
-        WHERE 1=1";
-$params = [];
-
-if (!empty($categoriesSelected)) {
-    $placeholders = implode(',', array_fill(0, count($categoriesSelected), '?'));
-    $sql .= " AND c.slug IN ($placeholders)";
-    foreach ($categoriesSelected as $catSlug) {
-        $params[] = sanitizeInput($catSlug);
-    }
+// Get category ID if a single category is selected
+$category_id = null;
+if (!empty($categoriesSelected) && !in_array('all', $categoriesSelected) && count($categoriesSelected) === 1) {
+    $stmt = $conn->prepare("SELECT id FROM categories WHERE slug = ?");
+    $stmt->execute([$categoriesSelected[0]]);
+    $category_id = $stmt->fetchColumn();
 }
 
-if ($search) {
-    $sql .= " AND (p.name LIKE ? OR p.description LIKE ?)";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-}
-
-if ($minPrice !== null) {
-    $sql .= " AND p.price >= ?";
-    $params[] = $minPrice;
-}
-
-if ($maxPrice !== null) {
-    $sql .= " AND p.price <= ?";
-    $params[] = $maxPrice;
-}
-
-// Get total count for pagination
-$countSql = str_replace("p.*, c.name as category_name", "COUNT(*) as total", $sql);
-$stmt = $conn->prepare($countSql);
-$stmt->execute($params);
-$totalProducts = $stmt->fetch()['total'];
-$totalPages = ceil($totalProducts / $perPage);
-
-// Auto-insert demo products if none exist
-$productCount = $conn->query('SELECT COUNT(*) FROM products')->fetchColumn();
-if ($productCount == 0) {
-    // Get all categories
-    $allCats = $conn->query('SELECT * FROM categories')->fetchAll();
-    $demoProducts = [
-        ['iPhone 14 Pro', 420000, 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=400&q=80'],
-        ['Samsung Galaxy S23', 350000, 'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=400&q=80'],
-        ['Xiaomi 13 Pro', 220000, 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=400&q=80'],
-        ['Oppo Reno 8', 180000, 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80'],
-        // Add more demo products as needed
-    ];
-    $i = 0;
-    foreach ($allCats as $cat) {
-        foreach ($demoProducts as $demo) {
-            $stmt = $conn->prepare('INSERT INTO products (name, price, image, category_id, stock, created_at) VALUES (?, ?, ?, ?, ?, NOW())');
-            $stmt->execute([
-                $demo[0],
-                $demo[1],
-                $demo[2],
-                $cat['id'],
-                rand(5, 20)
-            ]);
-            $i++;
-            if ($i >= 20) break 2; // Insert up to 20 demo products
-        }
-    }
-    // Reload to show new products
-    header('Location: ' . $_SERVER['REQUEST_URI']);
-    exit();
-}
-
-// Add sorting
+// Map sort parameter to our search function parameters
+$sort_by = 'name';
+$sort_order = 'ASC';
 switch ($sort) {
     case 'price_asc':
-        $sql .= " ORDER BY p.price ASC";
+        $sort_by = 'price';
+        $sort_order = 'ASC';
         break;
     case 'price_desc':
-        $sql .= " ORDER BY p.price DESC";
+        $sort_by = 'price';
+        $sort_order = 'DESC';
         break;
     case 'name_asc':
-        $sql .= " ORDER BY p.name ASC";
+        $sort_by = 'name';
+        $sort_order = 'ASC';
         break;
     case 'name_desc':
-        $sql .= " ORDER BY p.name DESC";
+        $sort_by = 'name';
+        $sort_order = 'DESC';
         break;
     default:
-        $sql .= " ORDER BY p.created_at DESC";
+        $sort_by = 'created_at';
+        $sort_order = 'DESC';
 }
 
-// Add pagination
-$sql .= " LIMIT ? OFFSET ?";
-$params[] = $perPage;
-$params[] = $offset;
+// Get products using our search function
+$products = searchProducts(
+    search_term: $search,
+    category_id: $category_id,
+    brand: $brandSelected,
+    min_price: $minPrice,
+    max_price: $maxPrice,
+    sort_by: $sort_by,
+    sort_order: $sort_order
+);
 
-$stmt = $conn->prepare($sql);
-// Bind all params except the last two (LIMIT, OFFSET)
-$paramIndex = 1;
-for ($i = 0; $i < count($params) - 2; $i++, $paramIndex++) {
-    $stmt->bindValue($paramIndex, $params[$i]);
-}
-// Bind LIMIT and OFFSET as integers
-$stmt->bindValue($paramIndex++, (int)$params[count($params) - 2], PDO::PARAM_INT);
-$stmt->bindValue($paramIndex, (int)$params[count($params) - 1], PDO::PARAM_INT);
+// Get total count for pagination
+$totalProducts = count($products);
+$totalPages = ceil($totalProducts / $perPage);
 
-$stmt->execute();
-$products = $stmt->fetchAll();
+// Apply pagination
+$products = array_slice($products, $offset, $perPage);
 
 // Get categories for filter
 $stmt = $conn->query("SELECT * FROM categories ORDER BY name");
-$categories = $stmt->fetchAll();
+$categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Get all available brands for filter
+$brands = getAllBrands();
+
+// Get price range
+$priceRange = getPriceRange();
+
+// Function to build query parameters for URLs
 function buildQuery($params, $overrides = []) {
     $query = array_merge($params, $overrides);
     return http_build_query($query);
@@ -151,6 +111,13 @@ $currentParams = $_GET;
     <?php include 'includes/header.php'; ?>
 
     <div class="container py-5">
+        <?php if (!empty($search) && empty($products)): ?>
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>No products found!</strong> We couldn't find any products matching "<?php echo htmlspecialchars($search); ?>".
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+
         <div class="row">
             <!-- Filters Sidebar -->
             <div class="col-md-3">
@@ -162,32 +129,43 @@ $currentParams = $_GET;
                             <!-- Search -->
                             <div class="mb-3">
                                 <label for="search" class="form-label">Search</label>
-                                <input type="text" class="form-control" id="search" name="search" value="<?php echo $search; ?>">
+                                <input type="text" class="form-control" id="search" name="search" value="<?php echo htmlspecialchars($search); ?>">
                             </div>
                             
                             <!-- Categories -->
                             <div class="mb-3">
                                 <label class="form-label">Categories</label>
                                 <div class="form-check d-flex align-items-center mb-1">
-                                    <input class="form-check-input me-2" type="checkbox" name="category[]" id="category_all" value="all" <?php if (empty($categoriesSelected)) echo 'checked'; ?>>
+                                    <input class="form-check-input me-2" type="checkbox" name="category[]" id="category_all" value="all" <?php echo (empty($categoriesSelected) || in_array('all', $categoriesSelected)) ? 'checked' : ''; ?>>
                                     <label class="form-check-label d-flex align-items-center" for="category_all">
-                                        <i class="bi bi-grid me-2" style="color: var(--primary-color);"></i>All
+                                        <i class="fas fa-th me-2" style="color: var(--primary-color);"></i>All
                                     </label>
                                 </div>
                                 <?php foreach ($categories as $cat): ?>
-                                    <?php if (in_array($cat['slug'], ['smartphones', 'tablets', 'accessories', 'wearables'])): ?>
                                     <div class="form-check d-flex align-items-center mb-1">
                                         <input class="form-check-input me-2" type="checkbox" name="category[]" 
                                                id="category_<?php echo $cat['id']; ?>" 
-                                               value="<?php echo $cat['slug']; ?>"
+                                               value="<?php echo htmlspecialchars($cat['slug']); ?>"
                                                <?php echo in_array($cat['slug'], $categoriesSelected) ? 'checked' : ''; ?>>
                                         <label class="form-check-label d-flex align-items-center" for="category_<?php echo $cat['id']; ?>">
-                                            <i class="bi bi-phone-fill me-2" style="color: var(--primary-color);"></i>
+                                            <i class="fas fa-mobile-alt me-2" style="color: var(--primary-color);"></i>
                                             <?php echo htmlspecialchars($cat['name']); ?>
                                         </label>
                                     </div>
-                                    <?php endif; ?>
                                 <?php endforeach; ?>
+                            </div>
+                            
+                            <!-- Brands -->
+                            <div class="mb-3">
+                                <label for="brand" class="form-label">Brand</label>
+                                <select class="form-select" id="brand" name="brand">
+                                    <option value="">All Brands</option>
+                                    <?php foreach ($brands as $brand): ?>
+                                        <option value="<?php echo htmlspecialchars($brand); ?>" <?php echo $brandSelected === $brand ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($brand); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                             
                             <!-- Price Range -->
@@ -196,11 +174,13 @@ $currentParams = $_GET;
                                 <div class="row">
                                     <div class="col-6">
                                         <input type="number" class="form-control" name="min_price" 
-                                               placeholder="Min" value="<?php echo $minPrice; ?>">
+                                               placeholder="Min" min="<?php echo $priceRange['min_price']; ?>" max="<?php echo $priceRange['max_price']; ?>"
+                                               value="<?php echo $minPrice !== null ? htmlspecialchars($minPrice) : ''; ?>">
                                     </div>
                                     <div class="col-6">
                                         <input type="number" class="form-control" name="max_price" 
-                                               placeholder="Max" value="<?php echo $maxPrice; ?>">
+                                               placeholder="Max" min="<?php echo $priceRange['min_price']; ?>" max="<?php echo $priceRange['max_price']; ?>"
+                                               value="<?php echo $maxPrice !== null ? htmlspecialchars($maxPrice) : ''; ?>">
                                     </div>
                                 </div>
                             </div>
@@ -229,11 +209,58 @@ $currentParams = $_GET;
             <!-- Products Grid -->
             <div class="col-md-9">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 class="mb-0">Products</h2>
+                    <h2 class="mb-0">
+                        <?php if (!empty($search)): ?>
+                            Search Results for "<?php echo htmlspecialchars($search); ?>"
+                        <?php else: ?>
+                            Products
+                        <?php endif; ?>
+                    </h2>
                     <div class="text-muted">
                         Showing <?php echo count($products); ?> of <?php echo $totalProducts; ?> products
                     </div>
                 </div>
+                
+                <!-- Active Filters Display -->
+                <?php if (!empty($search) || !empty($categoriesSelected) && !in_array('all', $categoriesSelected) || $brandSelected !== null || $minPrice !== null || $maxPrice !== null): ?>
+                <div class="mb-3">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <span class="text-muted">Active filters:</span>
+                        <?php if (!empty($search)): ?>
+                            <span class="badge bg-primary">Search: <?php echo htmlspecialchars($search); ?></span>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($categoriesSelected) && !in_array('all', $categoriesSelected)): ?>
+                            <?php foreach ($categoriesSelected as $catSlug): ?>
+                                <?php 
+                                    $catName = '';
+                                    foreach ($categories as $cat) {
+                                        if ($cat['slug'] === $catSlug) {
+                                            $catName = $cat['name'];
+                                            break;
+                                        }
+                                    }
+                                ?>
+                                <span class="badge bg-secondary">Category: <?php echo htmlspecialchars($catName); ?></span>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        
+                        <?php if ($brandSelected !== null): ?>
+                            <span class="badge bg-info text-dark">Brand: <?php echo htmlspecialchars($brandSelected); ?></span>
+                        <?php endif; ?>
+                        
+                        <?php if ($minPrice !== null): ?>
+                            <span class="badge bg-info text-dark">Min Price: <?php echo formatPrice($minPrice); ?></span>
+                        <?php endif; ?>
+                        
+                        <?php if ($maxPrice !== null): ?>
+                            <span class="badge bg-info text-dark">Max Price: <?php echo formatPrice($maxPrice); ?></span>
+                        <?php endif; ?>
+                        
+                        <a href="products.php" class="btn btn-sm btn-outline-danger">Clear All</a>
+                    </div>
+                </div>
+                <?php endif; ?>
                 
                 <div class="row" id="productGrid">
                     <?php foreach ($products as $product): ?>
@@ -258,7 +285,10 @@ $currentParams = $_GET;
                                 <img src="<?php echo htmlspecialchars($product['image']); ?>" class="card-img-top mb-3 img-fluid rounded" alt="<?php echo htmlspecialchars($product['name']); ?>" style="height:180px;object-fit:cover;">
                                 <div class="card-body">
                                     <h5 class="card-title"><?php echo htmlspecialchars($product['name']); ?></h5>
-                                    <p class="card-text text-muted"><?php echo htmlspecialchars($product['category_name']); ?></p>
+                                    <p class="card-text text-muted">
+                                        <?php echo htmlspecialchars($product['category_name']); ?> | 
+                                        <span class="fw-medium"><?php echo htmlspecialchars($product['brand']); ?></span>
+                                    </p>
                                     <p class="card-text product-price text-primary fw-bold" style="font-size:1.5rem;">
                                         <?php echo formatPrice($product['price']); ?>
                                     </p>
@@ -285,15 +315,19 @@ $currentParams = $_GET;
                             </div>
                         </div>
                     <?php endforeach; ?>
-                    <?php if (count($products) === 0): ?>
-                        <div class="col-12">
-                            <div class="alert alert-warning text-center">
-                                No products found for your filters.
-                                <a href="products.php" class="btn btn-link">Reset Filters</a>
-                            </div>
-                        </div>
-                    <?php endif; ?>
                 </div>
+                
+                <!-- Empty State if no products are found -->
+                <?php if (empty($products)): ?>
+                <div class="text-center p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-search fa-4x text-muted"></i>
+                    </div>
+                    <h3>No products found</h3>
+                    <p class="text-muted">Try adjusting your search or filter criteria</p>
+                    <a href="products.php" class="btn btn-primary mt-3">Clear Filters</a>
+                </div>
+                <?php endif; ?>
                 
                 <!-- Pagination -->
                 <?php if ($totalPages > 1): ?>
@@ -338,5 +372,41 @@ $currentParams = $_GET;
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Custom JS -->
     <script src="assets/js/main.js"></script>
+    
+    <script>
+    // Handle "All" checkbox behavior
+    document.addEventListener('DOMContentLoaded', function() {
+        const allCategoryCheckbox = document.getElementById('category_all');
+        const categoryCheckboxes = document.querySelectorAll('input[name="category[]"]:not(#category_all)');
+        
+        // When "All" is checked, uncheck other categories
+        allCategoryCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                categoryCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+            }
+        });
+        
+        // When any other category is checked, uncheck "All"
+        categoryCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    allCategoryCheckbox.checked = false;
+                }
+                
+                // If no categories are selected, check "All"
+                let anyChecked = false;
+                categoryCheckboxes.forEach(cb => {
+                    if (cb.checked) anyChecked = true;
+                });
+                
+                if (!anyChecked) {
+                    allCategoryCheckbox.checked = true;
+                }
+            });
+        });
+    });
+    </script>
 </body>
-</html> 
+</html>

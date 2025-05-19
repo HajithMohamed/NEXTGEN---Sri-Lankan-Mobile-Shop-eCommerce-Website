@@ -216,4 +216,14 @@ footer a:hover {
     padding: 0.4em 0.7em;
     border-radius: 0.5em;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Wishlist Button */
+.btn-outline-primary.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-outline-primary.active i {
+    color: white;
 } 

@@ -3,6 +3,16 @@ $cart_count = 0;
 if(isset($_SESSION['cart'])) {
     $cart_count = count($_SESSION['cart']);
 }
+
+// Fetch user profile picture if logged in
+$user_profile_picture = null;
+if (isset($_SESSION['user_id'])) {
+    require_once __DIR__ . '/../config/database.php';
+    $conn = getDBConnection();
+    $stmt = $conn->prepare("SELECT profile_picture FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user_profile_picture = $stmt->fetchColumn();
+}
 ?>
 <header class="bg-white shadow-sm">
     <nav class="navbar navbar-expand-lg navbar-light">
@@ -32,8 +42,8 @@ if(isset($_SESSION['cart'])) {
                 </ul>
                 
                 <div class="d-flex align-items-center">
-                    <form class="d-flex me-3" action="search.php" method="GET">
-                        <input class="form-control me-2" type="search" name="q" placeholder="Search products...">
+                    <form class="d-flex me-3" action="products.php" method="GET">
+                        <input class="form-control me-2" type="search" name="search" placeholder="Search products...">
                         <button class="btn btn-outline-primary" type="submit">Search</button>
                     </form>
                     
@@ -47,18 +57,12 @@ if(isset($_SESSION['cart'])) {
                     </a>
                     
                     <?php if(isset($_SESSION['user_id'])): ?>
-                        <div class="dropdown">
-                            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
-                                <i class="fas fa-user"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="profile.php">My Profile</a></li>
-                                <li><a class="dropdown-item" href="orders.php">My Orders</a></li>
-                                <li><a class="dropdown-item" href="wishlist.php">Wishlist</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="logout.php">Logout</a></li>
-                            </ul>
-                        </div>
+                        <?php
+                            $profile_img = $user_profile_picture ? htmlspecialchars($user_profile_picture) : 'assets/images/default-profile.png';
+                        ?>
+                        <a href="profile.php">
+                            <img src="<?php echo $profile_img; ?>" alt="Profile" style="width:40px; height:40px; object-fit:cover; border-radius:50%;">
+                        </a>
                     <?php else: ?>
                         <a href="login.php" class="btn btn-outline-primary me-2">Login</a>
                         <a href="register.php" class="btn btn-primary">Register</a>
