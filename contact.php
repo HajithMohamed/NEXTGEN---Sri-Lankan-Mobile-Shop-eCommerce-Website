@@ -2,6 +2,19 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+
+$success = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Simple validation (expand as needed)
+    $name = trim($_POST['name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $subject = trim($_POST['subject'] ?? '');
+    $message = trim($_POST['message'] ?? '');
+    if ($name && $email && $subject && $message && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        // Here you would normally send the email or store the message
+        $success = true;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -10,6 +23,7 @@ require_once 'includes/functions.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contact Us - NEXTGEN</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body>
@@ -65,5 +79,30 @@ require_once 'includes/functions.php';
     </section>
     <?php include 'includes/footer.php'; ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="assets/js/main.js"></script>
+    <!-- Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="successModalLabel">Success</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+            <p class="mb-0">Message sent successfully!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+    <?php if ($success): ?>
+      var successModal = new bootstrap.Modal(document.getElementById('successModal'));
+      window.addEventListener('DOMContentLoaded', function() {
+        successModal.show();
+      });
+    <?php endif; ?>
+    </script>
 </body>
 </html> 

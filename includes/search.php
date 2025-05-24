@@ -5,7 +5,8 @@ require_once __DIR__ . '/../config/database.php';
  * Search products based on search term and filters
  * 
  * @param string $search_term The search term to look for
- * @param int|null $category_id Optional category filter
+ * @param int|null $category_id Optional single category ID filter
+ * @param array|null $category_slugs Optional array of category slugs filter
  * @param string|null $brand Optional brand filter
  * @param float|null $min_price Optional minimum price filter
  * @param float|null $max_price Optional maximum price filter
@@ -13,9 +14,10 @@ require_once __DIR__ . '/../config/database.php';
  * @param string $sort_order Sort order (ASC, DESC)
  * @return array Array of matching products
  */
-function searchProducts($search_term = '', $category_id = null, $brand = null, $min_price = null, $max_price = null, $sort_by = 'name', $sort_order = 'ASC') {
+function searchProducts($search_term = '', $category_id = null, $brand = null, $min_price = null, $max_price = null, $sort_by = 'name', $sort_order = 'ASC', $category_slugs = null) {
     $conn = getDBConnection();
     
+    // Base query with join to get category name
     $query = "SELECT p.*, c.name as category_name 
               FROM products p 
               LEFT JOIN categories c ON p.category_id = c.id 
@@ -31,24 +33,44 @@ function searchProducts($search_term = '', $category_id = null, $brand = null, $
         $params[] = $search_param;
     }
     
-    // Add category filter
+    // Handle category filtering - support both ID and multiple slugs
     if ($category_id !== null) {
+        // Single category ID provided directly
         $query .= " AND p.category_id = ?";
         $params[] = $category_id;
+    } elseif (!empty($category_slugs) && is_array($category_slugs) && !in_array('all', $category_slugs)) {
+        // We have category slugs to filter by
+        try {
+            // Get category IDs from slugs
+            $placeholders = implode(',', array_fill(0, count($category_slugs), '?'));
+            $catStmt = $conn->prepare("SELECT id FROM categories WHERE slug IN ($placeholders)");
+            $catStmt->execute($category_slugs);
+            $categoryIds = $catStmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            if (!empty($categoryIds)) {
+                $idPlaceholders = implode(',', array_fill(0, count($categoryIds), '?'));
+                $query .= " AND p.category_id IN ($idPlaceholders)";
+                foreach ($categoryIds as $catId) {
+                    $params[] = $catId;
+                }
+            }
+        } catch (PDOException $e) {
+            error_log("Error processing category slugs: " . $e->getMessage());
+        }
     }
     
     // Add brand filter
-    if ($brand !== null) {
+    if ($brand !== null && $brand !== '') {
         $query .= " AND p.brand = ?";
         $params[] = $brand;
     }
     
     // Add price range filters
-    if ($min_price !== null) {
+    if ($min_price !== null && $min_price !== '') {
         $query .= " AND p.price >= ?";
         $params[] = $min_price;
     }
-    if ($max_price !== null) {
+    if ($max_price !== null && $max_price !== '') {
         $query .= " AND p.price <= ?";
         $params[] = $max_price;
     }
@@ -103,9 +125,9 @@ function getPriceRange() {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         error_log("Error fetching price range: " . $e->getMessage());
-        return array('min_price' => 0, 'max_price' => 0);
+        return array('min_price' => 0, 'max_price' => 9999);
     }
 }
 
 $current_page = basename($_SERVER['PHP_SELF']);
-$show_search = in_array($current_page, ['index.php', 'products.php']); 
+$show_search = in_array($current_page, ['index.php', 'products.php']);

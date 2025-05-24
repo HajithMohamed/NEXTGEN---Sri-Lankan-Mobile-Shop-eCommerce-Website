@@ -10,13 +10,16 @@ $conn = getDBConnection();
 
 // Get filters
 $categoriesSelected = [];
-if (isset($_GET['category'])) {
-    $categoriesSelected = is_array($_GET['category']) ? $_GET['category'] : [$_GET['category']];
+if (isset($_GET['category']) && is_array($_GET['category'])) {
+    $categoriesSelected = $_GET['category'];
+} elseif (isset($_GET['category'])) {
+    $categoriesSelected = [$_GET['category']];
 }
+
 $search = isset($_GET['search']) ? sanitizeInput($_GET['search']) : '';
 $minPrice = isset($_GET['min_price']) && $_GET['min_price'] !== '' ? (float)$_GET['min_price'] : null;
 $maxPrice = isset($_GET['max_price']) && $_GET['max_price'] !== '' ? (float)$_GET['max_price'] : null;
-$brandSelected = isset($_GET['brand']) ? sanitizeInput($_GET['brand']) : null;
+$brandSelected = isset($_GET['brand']) && $_GET['brand'] !== '' ? sanitizeInput($_GET['brand']) : null;
 $sort = isset($_GET['sort']) ? sanitizeInput($_GET['sort']) : 'newest';
 
 // Pagination
@@ -24,12 +27,10 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 12;
 $offset = ($page - 1) * $perPage;
 
-// Get category ID if a single category is selected
-$category_id = null;
-if (!empty($categoriesSelected) && !in_array('all', $categoriesSelected) && count($categoriesSelected) === 1) {
-    $stmt = $conn->prepare("SELECT id FROM categories WHERE slug = ?");
-    $stmt->execute([$categoriesSelected[0]]);
-    $category_id = $stmt->fetchColumn();
+// Determine if we should filter by categories or show all
+$categoryFilter = null;
+if (!empty($categoriesSelected) && !in_array('all', $categoriesSelected)) {
+    $categoryFilter = $categoriesSelected;
 }
 
 // Map sort parameter to our search function parameters
@@ -57,15 +58,16 @@ switch ($sort) {
         $sort_order = 'DESC';
 }
 
-// Get products using our search function
+// Get products using our updated search function
 $products = searchProducts(
     search_term: $search,
-    category_id: $category_id,
+    category_id: null,
     brand: $brandSelected,
     min_price: $minPrice,
     max_price: $maxPrice,
     sort_by: $sort_by,
-    sort_order: $sort_order
+    sort_order: $sort_order,
+    category_slugs: $categoryFilter
 );
 
 // Get total count for pagination

@@ -172,6 +172,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <a href="wishlist.php" class="list-group-item list-group-item-action">
                                 <i class="fas fa-heart me-2"></i>Wishlist
                             </a>
+                            <a href="logout.php" class="list-group-item list-group-item-action text-danger">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a>
                         </div>
                     </div>
                 </div>

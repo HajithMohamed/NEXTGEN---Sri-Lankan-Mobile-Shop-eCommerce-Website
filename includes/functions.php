@@ -266,4 +266,10 @@ function uploadImage($file, $targetDir = 'assets/images/products/') {
     
     return false;
 }
+
+function log_user_activity($user_id, $action, $details = null) {
+    $conn = getDBConnection();
+    $stmt = $conn->prepare("INSERT INTO user_activity_logs (user_id, action, details) VALUES (?, ?, ?)");
+    $stmt->execute([$user_id, $action, $details]);
+}
 ?> 

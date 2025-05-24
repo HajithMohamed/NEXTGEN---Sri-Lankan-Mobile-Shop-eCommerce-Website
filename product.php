@@ -22,6 +22,11 @@ $relatedProducts = $stmt->fetchAll();
 
 // Handle add to cart
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_cart'])) {
+    if (!isLoggedIn()) {
+        $_SESSION['redirect_after_login'] = 'product.php?id=' . $productId;
+        header('Location: login.php');
+        exit();
+    }
     $quantity = (int)$_POST['quantity'];
     if ($quantity > 0 && $quantity <= $product['stock']) {
         addToCart($productId, $quantity);
@@ -158,52 +163,44 @@ if (!empty($product['images'])) {
         <div class="row mt-5">
             <div class="col-12">
                 <h3>Customer Reviews</h3>
-                
+                <div id="review-message"></div>
                 <?php if (isLoggedIn()): ?>
                     <div class="card mb-4">
                         <div class="card-body">
                             <h5>Write a Review</h5>
                             <form action="ajax/add_review.php" method="POST" id="reviewForm">
                                 <input type="hidden" name="product_id" value="<?php echo $productId; ?>">
-                                
                                 <div class="mb-3">
                                     <label class="form-label">Rating</label>
-                                    <div class="rating">
-                                        <?php for ($i = 5; $i >= 1; $i--): ?>
-                                            <input type="radio" name="rating" value="<?php echo $i; ?>" id="star<?php echo $i; ?>" required>
-                                            <label for="star<?php echo $i; ?>"><i class="fas fa-star"></i></label>
+                                    <div class="rating" id="star-rating">
+                                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                                            <i class="fas fa-star text-secondary" data-value="<?php echo $i; ?>"></i>
                                         <?php endfor; ?>
+                                        <input type="hidden" name="rating" id="rating-value" required>
                                     </div>
                                 </div>
-                                
                                 <div class="mb-3">
                                     <label for="comment" class="form-label">Your Review</label>
                                     <textarea class="form-control" id="comment" name="comment" rows="3" required></textarea>
                                 </div>
-                                
                                 <button type="submit" class="btn btn-primary">Submit Review</button>
                             </form>
                         </div>
                     </div>
                 <?php endif; ?>
-                
-                <div class="reviews">
+                <div id="reviews-list">
                     <?php foreach ($reviews as $review): ?>
                         <div class="card mb-3">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <h6 class="mb-0"><?php echo htmlspecialchars($review['user_name']); ?></h6>
-                                    <small class="text-muted">
-                                        <?php echo date('F j, Y', strtotime($review['created_at'])); ?>
-                                    </small>
+                                    <small class="text-muted"><?php echo date('F j, Y', strtotime($review['created_at'])); ?></small>
                                 </div>
-                                
-                                <div class="rating mb-2">
+                                <div class="mb-2">
                                     <?php for ($i = 1; $i <= 5; $i++): ?>
-                                        <i class="fas fa-star <?php echo $i <= $review['rating'] ? 'text-warning' : 'text-muted'; ?>"></i>
+                                        <i class="fas fa-star<?php echo $i <= $review['rating'] ? ' text-warning' : ' text-secondary'; ?>"></i>
                                     <?php endfor; ?>
                                 </div>
-                                
                                 <p class="mb-0"><?php echo nl2br(htmlspecialchars($review['comment'])); ?></p>
                             </div>
                         </div>
@@ -306,6 +303,62 @@ if (!empty($product['images'])) {
             const url = encodeURIComponent(window.location.href);
             window.open(`https://wa.me/?text=${text}%20${url}`, '_blank');
         }
+
+        const reviewForm = document.getElementById('reviewForm');
+        if (reviewForm) {
+            reviewForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const form = this;
+                const formData = new FormData(form);
+                fetch('ajax/add_review.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    const msgDiv = document.getElementById('review-message');
+                    msgDiv.innerHTML = '<div class="alert alert-' + (data.success ? 'success' : 'danger') + '">' + data.message + '</div>';
+                    if (data.success) {
+                        form.reset();
+                        // Reload reviews
+                        fetch('ajax/get_reviews.php?product_id=' + form.product_id.value)
+                            .then(res => res.text())
+                            .then(html => {
+                                document.getElementById('reviews-list').innerHTML = html;
+                            });
+                    }
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const stars = document.querySelectorAll('#star-rating .fa-star');
+            const ratingInput = document.getElementById('rating-value');
+            let currentRating = 0;
+
+            stars.forEach(star => {
+                star.addEventListener('mouseenter', function() {
+                    const val = parseInt(this.getAttribute('data-value'));
+                    highlightStars(val);
+                });
+                star.addEventListener('mouseleave', function() {
+                    highlightStars(currentRating);
+                });
+                star.addEventListener('click', function() {
+                    currentRating = parseInt(this.getAttribute('data-value'));
+                    ratingInput.value = currentRating;
+                    highlightStars(currentRating);
+                });
+            });
+
+            function highlightStars(rating) {
+                stars.forEach(star => {
+                    const val = parseInt(star.getAttribute('data-value'));
+                    star.classList.toggle('text-warning', val <= rating);
+                    star.classList.toggle('text-secondary', val > rating);
+                });
+            }
+        });
     </script>
 </body>
 </html> 

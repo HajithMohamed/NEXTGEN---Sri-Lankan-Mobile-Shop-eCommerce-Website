@@ -24,6 +24,8 @@ $orders = $stmt->fetchAll();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Orders - NEXTGEN</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body>
     <?php include 'includes/header.php'; ?>
@@ -37,7 +39,7 @@ $orders = $stmt->fetchAll();
                     <div class="accordion-item mb-3">
                         <h2 class="accordion-header" id="heading<?= $order['id'] ?>">
                             <button class="accordion-button <?= $index > 0 ? 'collapsed' : '' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<?= $order['id'] ?>" aria-expanded="<?= $index === 0 ? 'true' : 'false' ?>" aria-controls="collapse<?= $order['id'] ?>">
-                                Order #<?= $order['id'] ?> - <?= htmlspecialchars($order['created_at']) ?> - <?= htmlspecialchars(ucfirst($order['status'])) ?> - LKR <?= number_format($order['total'], 2) ?>
+                                Order #<?= $order['id'] ?> - <?= htmlspecialchars($order['created_at']) ?> - <?= htmlspecialchars(ucfirst($order['status'])) ?> - LKR <?= number_format($order['total_amount'], 2) ?>
                             </button>
                         </h2>
                         <div id="collapse<?= $order['id'] ?>" class="accordion-collapse collapse <?= $index === 0 ? 'show' : '' ?>" aria-labelledby="heading<?= $order['id'] ?>" data-bs-parent="#ordersAccordion">

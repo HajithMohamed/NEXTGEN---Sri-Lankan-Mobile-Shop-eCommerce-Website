@@ -188,28 +188,118 @@ $allProducts = getProducts($selectedCategory, null, 20);
     <!-- Promo Banners -->
     <section class="py-5">
         <div class="container">
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <div class="promo-banner position-relative rounded overflow-hidden shadow">
-                        <img src="assets/images/promo-1.jpg" class="w-100" alt="Promo 1">
-                        <div class="promo-caption position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center text-white" style="background:rgba(0,0,0,0.4);">
-                            <h3 class="fw-bold">Free Shipping</h3>
-                            <p>On orders over Rs. 50,000</p>
+            <div id="promoCarousel" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    <!-- First Slide -->
+                    <div class="carousel-item active">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="promo-banner position-relative rounded overflow-hidden shadow">
+                                    <img src="assets/images/promo-1.png" class="w-80" alt="Promo 1">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="promo-banner position-relative rounded overflow-hidden shadow">
+                                    <img src="assets/images/promo-2.png" class="w-60" alt="Promo 2">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Second Slide -->
+                    <div class="carousel-item">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="promo-banner position-relative rounded overflow-hidden shadow">
+                                    <img src="assets/images/promo-3.png" class="w-100" alt="Promo 3">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="promo-banner position-relative rounded overflow-hidden shadow">
+                                    <img src="assets/images/promo-4.png" class="w-100" alt="Promo 4">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Third Slide -->
+                    <div class="carousel-item">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="promo-banner position-relative rounded overflow-hidden shadow">
+                                    <img src="assets/images/promo-5.png" class="w-100" alt="Promo 5">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="promo-banner position-relative rounded overflow-hidden shadow">
+                                    <img src="assets/images/promo-1.png" class="w-100" alt="Promo 1">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="promo-banner position-relative rounded overflow-hidden shadow">
-                        <img src="assets/images/promo-2.jpg" class="w-100" alt="Promo 2">
-                        <div class="promo-caption position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center text-white" style="background:rgba(0,0,0,0.4);">
-                            <h3 class="fw-bold">Bundle Deals</h3>
-                            <p>Save more with exclusive combos</p>
-                        </div>
-                    </div>
+                <!-- Carousel Controls -->
+                <button class="carousel-control-prev" type="button" data-bs-target="#promoCarousel" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Previous</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#promoCarousel" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Next</span>
+                </button>
+                <!-- Carousel Indicators -->
+                <div class="carousel-indicators">
+                    <button type="button" data-bs-target="#promoCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+                    <button type="button" data-bs-target="#promoCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+                    <button type="button" data-bs-target="#promoCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
                 </div>
             </div>
         </div>
     </section>
+
+    <style>
+        /* Custom styles for the carousel */
+        #promoCarousel {
+            position: relative;
+        }
+        #promoCarousel .carousel-control-prev,
+        #promoCarousel .carousel-control-next {
+            width: 5%;
+            opacity: 0.8;
+        }
+        #promoCarousel .carousel-control-prev-icon,
+        #promoCarousel .carousel-control-next-icon {
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 50%;
+        }
+        #promoCarousel .carousel-indicators {
+            margin-bottom: 0;
+        }
+        #promoCarousel .carousel-indicators button {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin: 0 5px;
+        }
+        .promo-banner {
+            height: 222px; /* Fixed height for all promo banners */
+        }
+        .promo-banner img {
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+
+    <script>
+        // Initialize carousel with custom settings
+        document.addEventListener('DOMContentLoaded', function() {
+            var myCarousel = new bootstrap.Carousel(document.getElementById('promoCarousel'), {
+                interval: 1500, // Change slide every 5 seconds
+                wrap: true, // Continuous loop
+                keyboard: true, // Keyboard navigation
+                pause: 'hover' // Pause on mouse hover
+            });
+        });
+    </script>
 
     <!-- Featured Products Section -->
     <section class="py-5 bg-light">
@@ -238,7 +328,7 @@ $allProducts = getProducts($selectedCategory, null, 20);
     </section>
 
     <!-- Why Shop With Us -->
-    <section class="py-5 bg-light">
+    <section class="py-5 bg-light mt-5">
         <div class="container">
             <h2 class="text-center mb-4">Why Shop With Us?</h2>
             <div class="row text-center">
@@ -262,7 +352,7 @@ $allProducts = getProducts($selectedCategory, null, 20);
         </div>
     </section>
 
-    <!-- Customer Reviews Carousel -->
+    <!-- Customer Reviews Carousel
     <section class="py-5">
         <div class="container">
             <h2 class="text-center mb-4">What Our Customers Say</h2>
@@ -315,10 +405,10 @@ $allProducts = getProducts($selectedCategory, null, 20);
                 </button>
             </div>
         </div>
-    </section>
+    </section> -->
 
     <!-- Brands Section -->
-    <section class="py-5 bg-light">
+    <section class="py-5 bg-light mt-5">
         <div class="container">
             <h2 class="text-center mb-4">Brands We Carry</h2>
             <div class="row justify-content-center align-items-center g-4">
