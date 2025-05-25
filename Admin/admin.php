@@ -1,4 +1,5 @@
 <?php
+require_once './login.php';
 session_start();
 // Simple admin check
 if (!isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
@@ -101,16 +102,16 @@ $productCount = $conn->query("SELECT COUNT(*) FROM products")->fetchColumn();
                 <span class="sidebar-logo">NEXTGEN</span>
             </div>
             <nav class="nav flex-column mb-auto">
-                <a href="admin.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'admin.php' ? ' active' : '' ?>"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a>
-                <a href="admin_analytics.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'admin_analytics.php' ? ' active' : '' ?>"><i class="fas fa-chart-line me-2"></i>Analytics</a>
-                <a href="admin_orders.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'admin_orders.php' ? ' active' : '' ?>"><i class="fas fa-box me-2"></i>Order Management</a>
-                <a href="admin_users.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'admin_users.php' ? ' active' : '' ?>"><i class="fas fa-users me-2"></i>User Management</a>
-                <a href="admin_products.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'admin_products.php' ? ' active' : '' ?>"><i class="fas fa-mobile-alt me-2"></i>Product Management</a>
-                <a href="admin_audit_logs.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'admin_audit_logs.php' ? ' active' : '' ?>"><i class="fas fa-clipboard-list me-2"></i>Audit Logs</a>
-                <a href="admin_reviews.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'admin_reviews.php' ? ' active' : '' ?>"><i class="fas fa-star me-2"></i>Customer Reviews</a>
+                <a href="../Admin/admin.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == '../Admin/admin.php' ? ' active' : '' ?>"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a>
+                <a href="./admin_analytics.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == './admin_analytics.php' ? ' active' : '' ?>"><i class="fas fa-chart-line me-2"></i>Analytics</a>
+                <a href="./admin_orders.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == './admin_orders.php' ? ' active' : '' ?>"><i class="fas fa-box me-2"></i>Order Management</a>
+                <a href="./admin_users.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == './admin_users.php' ? ' active' : '' ?>"><i class="fas fa-users me-2"></i>User Management</a>
+                <a href="./admin_products.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == './admin_products.php' ? ' active' : '' ?>"><i class="fas fa-mobile-alt me-2"></i>Product Management</a>
+                <a href="./admin_audit_logs.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == './admin_audit_logs.php' ? ' active' : '' ?>"><i class="fas fa-clipboard-list me-2"></i>Audit Logs</a>
+                <a href="./admin_reviews.php" class="nav-link<?= basename($_SERVER['PHP_SELF']) == './admin_reviews.php' ? ' active' : '' ?>"><i class="fas fa-star me-2"></i>Customer Reviews</a>
             </nav>
             <div class="mt-auto text-center">
-                <a href="logout.php" class="btn btn-light w-100 mt-4"><i class="fas fa-sign-out-alt me-2"></i>Logout</a>
+                <a href="../logout.php" class="btn btn-light w-100 mt-4"><i class="fas fa-sign-out-alt me-2"></i>Logout</a>
             </div>
         </div>
         <!-- Main Content -->
